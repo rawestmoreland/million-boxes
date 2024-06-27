@@ -1,6 +1,7 @@
 import express from 'express';
 import { Request, Response, Express } from 'express';
 import http from 'http';
+import path from 'path';
 import { Server } from 'socket.io'
 
 const port = 3000;
@@ -10,8 +11,8 @@ const io = new Server(server)
 
 app.use(express.static('public'))
 
-app.get('/api', (req: Request, res: Response) => {
-  res.send('Hello World!');
+app.get('/', (req: Request, res: Response) => {
+  res.sendFile('index.html', { root: path.join(__dirname, 'public') });
 });
 
 app.get('/handleCheckbox', (req: Request, res: Response) => {
