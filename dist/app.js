@@ -36,7 +36,7 @@ app.get('/flush', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
 }));
 app.get('/load', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     for (let i = 0; i < 500000; i++) {
-        yield redis.zadd(`boxes`, `cb:${i}`, 0);
+        yield redis.zadd(`boxes`, 0, `cb:${i}`);
     }
     res.send('Hello World!');
 }));

@@ -30,7 +30,7 @@ app.get('/flush', async (req: Request, res: Response) => {
 
 app.get('/load', async (req: Request, res: Response) => {
   for (let i = 0; i < 500000; i++) {
-    await redis.zadd(`boxes`, `cb:${i}`, 0)
+    await redis.zadd(`boxes`, 0, `cb:${i}`)
   }
   res.send('Hello World!');
 });
