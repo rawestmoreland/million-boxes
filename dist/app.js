@@ -15,6 +15,9 @@ app.use(express_1.default.static('public'));
 app.get('/', (req, res) => {
     res.sendFile('index.html', { root: path_1.default.join(__dirname, 'public') });
 });
+app.get('/hello', (req, res) => {
+    res.send('Hello World!');
+});
 app.get('/handleCheckbox', (req, res) => {
     console.log(req.query);
 });
@@ -26,4 +29,5 @@ io.on('connection', (socket) => {
 server.listen(port, () => {
     return console.log(`Express is listening at http://localhost:${port}`);
 });
+exports.default = app;
 //# sourceMappingURL=app.js.map

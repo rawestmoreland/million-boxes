@@ -15,6 +15,10 @@ app.get('/', (req: Request, res: Response) => {
   res.sendFile('index.html', { root: path.join(__dirname, 'public') });
 });
 
+app.get('/hello', (req: Request, res: Response) => {
+  res.send('Hello World!');
+});
+
 app.get('/handleCheckbox', (req: Request, res: Response) => {
   console.log(req.query)
 })
@@ -28,3 +32,5 @@ io.on('connection', (socket) => {
 server.listen(port, () => {
   return console.log(`Express is listening at http://localhost:${port}`);
 });
+
+export default app
