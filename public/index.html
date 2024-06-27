@@ -22,6 +22,7 @@
     </style>
   </head>
   <body>
+    <div id="count-container"></div>
     <div id="checkbox-container"></div>
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -31,6 +32,12 @@
       const BUFFER_ROWS = 10;
       const TOTAL_CHECKBOXES = 1000000;
       let checkboxesLoaded = 0;
+
+      let countContainer = document.getElementById('count-container');
+      countContainer.style.position = 'sticky';
+      countContainer.style.top = '0';
+      countContainer.style.backgroundColor = 'white';
+      countContainer.innerHTML = `Total Checkboxes: ${checkboxesLoaded}`;
 
       // Initialize Socket.IO connection
       const socket = io();
@@ -80,6 +87,7 @@
           const boxesToLoad = boxesPerRow * (rowsPerPage + BUFFER_ROWS);
           loadCheckboxes(checkboxesLoaded, boxesToLoad);
           checkboxesLoaded += boxesToLoad;
+          countContainer.innerHTML = `Total Checkboxes Loaded: ${checkboxesLoaded}`;
         }
       }
 
@@ -96,6 +104,9 @@
         const rowsPerPage = Math.floor(containerHeight / boxHeight);
 
         const boxesToLoad = boxesPerRow * (rowsPerPage + BUFFER_ROWS);
+        if (checkboxesLoaded === 0) {
+          countContainer.innerHTML = `Total Checkboxes Loaded: ${boxesToLoad}`;
+        }
         loadCheckboxes(checkboxesLoaded, boxesToLoad);
         checkboxesLoaded += boxesToLoad;
       }
