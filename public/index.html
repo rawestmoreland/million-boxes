@@ -25,33 +25,68 @@
     <div id="checkbox-container"></div>
     <script src="/socket.io/socket.io.js"></script>
     <script>
-      const socket = io();
       const checkboxContainer = document.getElementById('checkbox-container');
       const CHECKBOX_SIZE = 30;
       const MARGIN_SIZE = 5;
-      const TOTAL_CHECKBOXES = 1000000;
       const BUFFER_ROWS = 10;
+      const TOTAL_CHECKBOXES = 1000000;
       let checkboxesLoaded = 0;
 
-      function handleCheckboxChange(checkbox) {
-        if (checkbox.checked) {
-          socket.emit('checkbox-checked', true);
-        } else {
-          socket.emit('checkbox-checked', false);
-        }
-      }
+      // Initialize Socket.IO connection
+      const socket = io();
 
-      function createCheckbox() {
+      // Function to create a checkbox and add change event listener
+      function createCheckbox(id, checked) {
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.classList.add('checkbox-item');
-        checkbox.addEventListener('change', (event) => {
-          handleCheckboxChange(event.target);
-        });
+        checkbox.dataset.id = id;
+        checkbox.checked = checked;
+        checkbox.addEventListener('change', handleCheckboxChange);
         return checkbox;
       }
 
-      function loadCheckboxes() {
+      // Handle checkbox state change
+      function handleCheckboxChange(event) {
+        const checkbox = event.target;
+        const id = parseInt(checkbox.dataset.id, 10);
+        const checked = checkbox.checked;
+        // Emit Socket.IO event with checkbox state
+        socket.emit('checkbox-checked', {
+          id: id,
+          checked: checked,
+        });
+      }
+
+      // Load checkboxes into the container
+      function loadCheckboxes(startIndex, count) {
+        socket.emit('request-checkboxes', startIndex, count);
+      }
+
+      // Handle scroll event to load more checkboxes
+      function handleScroll() {
+        if (
+          window.innerHeight + window.scrollY >=
+          document.body.offsetHeight - 100
+        ) {
+          const containerWidth = checkboxContainer.clientWidth;
+          const boxWidth = CHECKBOX_SIZE + 2 * MARGIN_SIZE;
+          const boxesPerRow = Math.floor(containerWidth / boxWidth);
+
+          const containerHeight = window.innerHeight;
+          const boxHeight = CHECKBOX_SIZE + 2 * MARGIN_SIZE;
+          const rowsPerPage = Math.floor(containerHeight / boxHeight);
+
+          const boxesToLoad = boxesPerRow * (rowsPerPage + BUFFER_ROWS);
+          loadCheckboxes(checkboxesLoaded, boxesToLoad);
+          checkboxesLoaded += boxesToLoad;
+        }
+      }
+
+      // Handle resize event to adjust checkbox layout
+      function handleResize() {
+        checkboxContainer.innerHTML = '';
+        checkboxesLoaded = 0;
         const containerWidth = checkboxContainer.clientWidth;
         const boxWidth = CHECKBOX_SIZE + 2 * MARGIN_SIZE;
         const boxesPerRow = Math.floor(containerWidth / boxWidth);
@@ -60,42 +95,34 @@
         const boxHeight = CHECKBOX_SIZE + 2 * MARGIN_SIZE;
         const rowsPerPage = Math.floor(containerHeight / boxHeight);
 
-        const boxesToLoad = Math.min(
-          TOTAL_CHECKBOXES - checkboxesLoaded,
-          boxesPerRow * (rowsPerPage + BUFFER_ROWS)
-        );
-        for (let i = 0; i < boxesToLoad; i++) {
-          const checkbox = createCheckbox();
-          checkboxContainer.appendChild(checkbox);
-        }
+        const boxesToLoad = boxesPerRow * (rowsPerPage + BUFFER_ROWS);
+        loadCheckboxes(checkboxesLoaded, boxesToLoad);
         checkboxesLoaded += boxesToLoad;
       }
 
-      function handleScroll() {
-        if (
-          window.innerHeight + window.scrollY >=
-          document.body.offsetHeight - 100
-        ) {
-          loadCheckboxes();
+      // Handle Socket.IO messages from the server
+      socket.on('load-checkboxes', (checkboxes) => {
+        checkboxes.forEach((data) => {
+          const checkbox = createCheckbox(data.id, data.checked);
+          checkboxContainer.appendChild(checkbox);
+        });
+      });
+
+      socket.on('update-checkbox', (data) => {
+        const checkbox = document.querySelector(
+          `.checkbox-item[data-id='${data.id}']`
+        );
+        if (checkbox) {
+          checkbox.checked = data.checked;
         }
-      }
+      });
 
-      function handleResize() {
-        const checkboxes = Array.from(
-          checkboxContainer.querySelectorAll('.checkbox-item')
-        );
-        checkboxes.forEach((checkbox) =>
-          checkboxContainer.removeChild(checkbox)
-        );
-        checkboxesLoaded = 0;
-        loadCheckboxes();
-      }
-
+      // Add event listeners for scroll and resize
       window.addEventListener('scroll', handleScroll);
       window.addEventListener('resize', handleResize);
 
       // Initial load
-      loadCheckboxes();
+      handleResize();
     </script>
   </body>
 </html>

@@ -4,13 +4,18 @@ import http from 'http';
 import path from 'path';
 import { Server } from 'socket.io'
 import { Redis } from 'ioredis'
+import dotenv from 'dotenv'
+dotenv.config()
 
 
-const redis = new Redis(process.env.REDIS_URL)
+// const redis = new Redis(process.env.REDIS_URL)
 const port = 3000;
 const app: Express = express();
 const server = http.createServer(app)
 const io = new Server(server)
+
+const TOTAL_CHECKBOXES = 1000000;
+const checkboxStates = Array(TOTAL_CHECKBOXES).fill(false);
 
 app.use(express.static('public'))
 
@@ -19,17 +24,31 @@ app.get('/', (req: Request, res: Response) => {
 });
 
 app.get('/hello', async (req: Request, res: Response) => {
-  await redis.set('hello', 'world')
   res.send('Hello World!');
 });
 
-app.get('/handleCheckbox', (req: Request, res: Response) => {
-  console.log(req.query)
-})
-
 io.on('connection', (socket) => {
-  socket.on('checkbox-checked', (msg) => {
-    console.log('message: ' + msg);
+  console.log('A user connected');
+
+  socket.on('request-checkboxes', (startIndex, count) => {
+    const checkboxes = [];
+    for (let i = startIndex; i < startIndex + count; i++) {
+      if (i < TOTAL_CHECKBOXES) {
+        checkboxes.push({ id: i, checked: checkboxStates[i] });
+      }
+    }
+    socket.emit('load-checkboxes', checkboxes);
+  });
+
+  socket.on('checkbox-checked', (data) => {
+    // Update the state of the checkbox
+    checkboxStates[data.id] = data.checked;
+    // Broadcast the checkbox state to all other connected clients
+    socket.broadcast.emit('update-checkbox', data);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('A user disconnected');
   });
 });
 
