@@ -23,9 +23,14 @@ app.get('/', (req: Request, res: Response) => {
   res.sendFile('index.html', { root: path.join(__dirname, 'public') });
 });
 
+app.get('/flush', async (req: Request, res: Response) => {
+  await redis.flushall()
+  res.json({ message: 'Cache flushed' });
+});
+
 app.get('/load', async (req: Request, res: Response) => {
-  for (let i = 0; i < TOTAL_CHECKBOXES; i++) {
-    await redis.set(`${i}`, 0)
+  for (let i = 0; i < 500000; i++) {
+    await redis.zadd(`boxes`, `cb:${i}`, 0)
   }
   res.send('Hello World!');
 });

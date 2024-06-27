@@ -30,9 +30,13 @@ app.use(express_1.default.static('public'));
 app.get('/', (req, res) => {
     res.sendFile('index.html', { root: path_1.default.join(__dirname, 'public') });
 });
+app.get('/flush', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    yield redis.flushall();
+    res.json({ message: 'Cache flushed' });
+}));
 app.get('/load', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    for (let i = 0; i < TOTAL_CHECKBOXES; i++) {
-        yield redis.set(`${i}`, 0);
+    for (let i = 0; i < 500000; i++) {
+        yield redis.zadd(`boxes`, `cb:${i}`, 0);
     }
     res.send('Hello World!');
 }));
