@@ -3,7 +3,10 @@ import { Request, Response, Express } from 'express';
 import http from 'http';
 import path from 'path';
 import { Server } from 'socket.io'
+import { Redis } from 'ioredis'
 
+
+const redis = new Redis(process.env.REDIS_URL)
 const port = 3000;
 const app: Express = express();
 const server = http.createServer(app)
@@ -15,7 +18,8 @@ app.get('/', (req: Request, res: Response) => {
   res.sendFile('index.html', { root: path.join(__dirname, 'public') });
 });
 
-app.get('/hello', (req: Request, res: Response) => {
+app.get('/hello', async (req: Request, res: Response) => {
+  await redis.set('hello', 'world')
   res.send('Hello World!');
 });
 
