@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lazy Loading Checkboxes</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        overflow-y: scroll;
+      }
+      #checkbox-container {
+        display: flex;
+        flex-wrap: wrap;
+      }
+      .checkbox-item {
+        width: 30px;
+        height: 30px;
+        margin: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="checkbox-container"></div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      const socket = io();
+      const checkboxContainer = document.getElementById('checkbox-container');
+      const CHECKBOX_SIZE = 30;
+      const MARGIN_SIZE = 5;
+      const TOTAL_CHECKBOXES = 1000000;
+      const BUFFER_ROWS = 10;
+      let checkboxesLoaded = 0;
+
+      function handleCheckboxChange(checkbox) {
+        if (checkbox.checked) {
+          socket.emit('checkbox-checked', true);
+        } else {
+          socket.emit('checkbox-checked', false);
+        }
+      }
+
+      function createCheckbox() {
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.classList.add('checkbox-item');
+        checkbox.addEventListener('change', (event) => {
+          handleCheckboxChange(event.target);
+        });
+        return checkbox;
+      }
+
+      function loadCheckboxes() {
+        const containerWidth = checkboxContainer.clientWidth;
+        const boxWidth = CHECKBOX_SIZE + 2 * MARGIN_SIZE;
+        const boxesPerRow = Math.floor(containerWidth / boxWidth);
+
+        const containerHeight = window.innerHeight;
+        const boxHeight = CHECKBOX_SIZE + 2 * MARGIN_SIZE;
+        const rowsPerPage = Math.floor(containerHeight / boxHeight);
+
+        const boxesToLoad = Math.min(
+          TOTAL_CHECKBOXES - checkboxesLoaded,
+          boxesPerRow * (rowsPerPage + BUFFER_ROWS)
+        );
+        for (let i = 0; i < boxesToLoad; i++) {
+          const checkbox = createCheckbox();
+          checkboxContainer.appendChild(checkbox);
+        }
+        checkboxesLoaded += boxesToLoad;
+      }
+
+      function handleScroll() {
+        if (
+          window.innerHeight + window.scrollY >=
+          document.body.offsetHeight - 100
+        ) {
+          loadCheckboxes();
+        }
+      }
+
+      function handleResize() {
+        const checkboxes = Array.from(
+          checkboxContainer.querySelectorAll('.checkbox-item')
+        );
+        checkboxes.forEach((checkbox) =>
+          checkboxContainer.removeChild(checkbox)
+        );
+        checkboxesLoaded = 0;
+        loadCheckboxes();
+      }
+
+      window.addEventListener('scroll', handleScroll);
+      window.addEventListener('resize', handleResize);
+
+      // Initial load
+      loadCheckboxes();
+    </script>
+  </body>
+</html>
