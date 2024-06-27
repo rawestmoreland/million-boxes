@@ -11,7 +11,7 @@ const app = (0, express_1.default)();
 const server = http_1.default.createServer(app);
 const io = new socket_io_1.Server(server);
 app.use(express_1.default.static('public'));
-app.get('/', (req, res) => {
+app.get('/api', (req, res) => {
     res.send('Hello World!');
 });
 app.get('/handleCheckbox', (req, res) => {
