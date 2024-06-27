@@ -8,7 +8,7 @@ import dotenv from 'dotenv'
 dotenv.config()
 
 
-// const redis = new Redis(process.env.REDIS_URL)
+const redis = new Redis(process.env.REDIS_URL)
 const port = 3000;
 const app: Express = express();
 const server = http.createServer(app)
@@ -23,7 +23,10 @@ app.get('/', (req: Request, res: Response) => {
   res.sendFile('index.html', { root: path.join(__dirname, 'public') });
 });
 
-app.get('/hello', async (req: Request, res: Response) => {
+app.get('/load', async (req: Request, res: Response) => {
+  for (let i = 0; i < TOTAL_CHECKBOXES; i++) {
+    await redis.set(`${i}`, 0)
+  }
   res.send('Hello World!');
 });
 
@@ -44,7 +47,7 @@ io.on('connection', (socket) => {
     // Update the state of the checkbox
     checkboxStates[data.id] = data.checked;
     // Broadcast the checkbox state to all other connected clients
-    socket.broadcast.emit('update-checkbox', data);
+    socket.broadcast.emit('update-checkbox', { boxData: data, totalChecked: checkboxStates.filter(Boolean).length });
   });
 
   socket.on('disconnect', () => {

@@ -16,9 +16,10 @@ const express_1 = __importDefault(require("express"));
 const http_1 = __importDefault(require("http"));
 const path_1 = __importDefault(require("path"));
 const socket_io_1 = require("socket.io");
+const ioredis_1 = require("ioredis");
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
-// const redis = new Redis(process.env.REDIS_URL)
+const redis = new ioredis_1.Redis(process.env.REDIS_URL);
 const port = 3000;
 const app = (0, express_1.default)();
 const server = http_1.default.createServer(app);
@@ -29,7 +30,10 @@ app.use(express_1.default.static('public'));
 app.get('/', (req, res) => {
     res.sendFile('index.html', { root: path_1.default.join(__dirname, 'public') });
 });
-app.get('/hello', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+app.get('/load', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    for (let i = 0; i < TOTAL_CHECKBOXES; i++) {
+        yield redis.set(`${i}`, 0);
+    }
     res.send('Hello World!');
 }));
 io.on('connection', (socket) => {
@@ -47,7 +51,7 @@ io.on('connection', (socket) => {
         // Update the state of the checkbox
         checkboxStates[data.id] = data.checked;
         // Broadcast the checkbox state to all other connected clients
-        socket.broadcast.emit('update-checkbox', data);
+        socket.broadcast.emit('update-checkbox', { boxData: data, totalChecked: checkboxStates.filter(Boolean).length });
     });
     socket.on('disconnect', () => {
         console.log('A user disconnected');
