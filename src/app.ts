@@ -7,6 +7,7 @@ import { Redis } from 'ioredis'
 import dotenv from 'dotenv'
 dotenv.config()
 
+let totalChecked = 0
 
 const redis = new Redis(process.env.VERCEL_REDIS_URL)
 const REDIS_KEY = 'boxes'
@@ -15,9 +16,13 @@ const app: Express = express();
 const server = http.createServer(app)
 const io = new Server(server)
 
-let checkedBoxes = new Set()
 
 app.use(express.static('public'))
+
+async function initializeTotalChecked() {
+  totalChecked = await redis.zcount(REDIS_KEY, 0, 999999)
+}
+initializeTotalChecked()
 
 app.get('/', (req: Request, res: Response) => {
   res.sendFile('index.html', { root: path.join(__dirname, 'public') });
@@ -39,12 +44,12 @@ io.on('connection', async (socket) => {
   console.log('A user connected');
 
   const initialState = await getCheckboxStates(0, 999999)
-  socket.emit("initialState", initialState)
+  socket.emit("initialState", { ...initialState, totalChecked })
 
   socket.on('checkboxChange', async (data) => {
-    await updateCheckboxState(data.index, data.checked)
+    totalChecked = await updateCheckboxState(data.index, data.checked)
 
-    io.emit('checkboxUpdate', data)
+    io.emit('checkboxUpdate', { ...data, totalChecked })
   })
 
   socket.on('requestRange', async (range) => {
@@ -60,6 +65,8 @@ io.on('connection', async (socket) => {
 async function updateCheckboxState(index: number, checked: boolean) {
   const score = checked ? index : -index - 1;
   await redis.zadd(REDIS_KEY, score, index.toString());
+  totalChecked += checked ? 1 : -1;
+  return totalChecked
 }
 
 async function getCheckboxStates(start: number, end: number) {
@@ -71,7 +78,8 @@ async function getCheckboxStates(start: number, end: number) {
 
     return {
       checked: checkedBoxes.map(Number),
-      unchecked: uncheckedBoxes.map(x => -Number(x) - 1)
+      unchecked: uncheckedBoxes.map(x => -Number(x) - 1),
+      totalChecked
     };
   } catch (error) {
     console.error('Error fetching checkbox states:', error);

@@ -19,14 +19,20 @@ const socket_io_1 = require("socket.io");
 const ioredis_1 = require("ioredis");
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
+let totalChecked = 0;
 const redis = new ioredis_1.Redis(process.env.VERCEL_REDIS_URL);
 const REDIS_KEY = 'boxes';
 const port = 3000;
 const app = (0, express_1.default)();
 const server = http_1.default.createServer(app);
 const io = new socket_io_1.Server(server);
-let checkedBoxes = new Set();
 app.use(express_1.default.static('public'));
+function initializeTotalChecked() {
+    return __awaiter(this, void 0, void 0, function* () {
+        totalChecked = yield redis.zcount(REDIS_KEY, 0, 999999);
+    });
+}
+initializeTotalChecked();
 app.get('/', (req, res) => {
     res.sendFile('index.html', { root: path_1.default.join(__dirname, 'public') });
 });
@@ -43,10 +49,10 @@ app.get('/load', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
 io.on('connection', (socket) => __awaiter(void 0, void 0, void 0, function* () {
     console.log('A user connected');
     const initialState = yield getCheckboxStates(0, 999999);
-    socket.emit("initialState", initialState);
+    socket.emit("initialState", Object.assign(Object.assign({}, initialState), { totalChecked }));
     socket.on('checkboxChange', (data) => __awaiter(void 0, void 0, void 0, function* () {
-        yield updateCheckboxState(data.index, data.checked);
-        io.emit('checkboxUpdate', data);
+        totalChecked = yield updateCheckboxState(data.index, data.checked);
+        io.emit('checkboxUpdate', Object.assign(Object.assign({}, data), { totalChecked }));
     }));
     socket.on('requestRange', (range) => __awaiter(void 0, void 0, void 0, function* () {
         const states = yield getCheckboxStates(range.start, range.end);
@@ -60,6 +66,8 @@ function updateCheckboxState(index, checked) {
     return __awaiter(this, void 0, void 0, function* () {
         const score = checked ? index : -index - 1;
         yield redis.zadd(REDIS_KEY, score, index.toString());
+        totalChecked += checked ? 1 : -1;
+        return totalChecked;
     });
 }
 function getCheckboxStates(start, end) {
@@ -71,7 +79,8 @@ function getCheckboxStates(start, end) {
             ]);
             return {
                 checked: checkedBoxes.map(Number),
-                unchecked: uncheckedBoxes.map(x => -Number(x) - 1)
+                unchecked: uncheckedBoxes.map(x => -Number(x) - 1),
+                totalChecked
             };
         }
         catch (error) {

@@ -1,5 +1,7 @@
 const socket = io();
 
+const app = document.getElementById('app');
+const countContainer = document.getElementById('checked-count');
 const loadingContainer = document.getElementById('loader');
 const outerContainer = document.getElementById('outer-container');
 const scrollContainer = document.getElementById('scroll-container');
@@ -12,6 +14,7 @@ let visibleCheckboxes = new Set();
 let columns, rows;
 
 let checkedBoxes = new Set();
+let totalChecked = 0;
 
 let stateInitialized = new Promise((resolve) => {
   outerContainer.style.display = 'none';
@@ -19,6 +22,8 @@ let stateInitialized = new Promise((resolve) => {
     console.log('initialState', initialState);
     checkedBoxes = new Set(initialState.checked);
     initialState.unchecked.forEach((index) => checkedBoxes.delete(index));
+    console.log('initialState.checked', initialState.totalChecked);
+    updateCheckedCount(initialState.totalChecked);
     resolve();
   });
 });
@@ -29,14 +34,21 @@ socket.on('checkboxUpdate', (data) => {
   } else {
     checkedBoxes.delete(data.index);
   }
+  updateCheckedCount(data.totalChecked);
   requestAnimationFrame(() => updateCheckbox(data.index));
 });
 
 socket.on('rangeUpdate', (states) => {
   states.checked.forEach((index) => checkedBoxes.add(index));
   states.unchecked.forEach((index) => checkedBoxes.delete(index));
+  updateCheckedCount(states.totalChecked);
   updateCheckboxesInView();
 });
+
+function updateCheckedCount(count) {
+  totalChecked = count;
+  countContainer.textContent = `Checked boxes: ${totalChecked}`;
+}
 
 function updateCheckboxesInView() {
   visibleCheckboxes.forEach((index) => {
@@ -95,11 +107,6 @@ function createNodePool() {
 function handleCheckboxChange(e) {
   const index = parseInt(e.target.parentElement.dataset.index);
   const checked = e.target.checked;
-  if (checked) {
-    checkedBoxes.add(index);
-  } else {
-    checkedBoxes.delete(index);
-  }
   socket.emit('checkboxChange', { index, checked });
 }
 
@@ -204,3 +211,10 @@ window.addEventListener('resize', () => {
   repositionAllCheckboxes();
   updateVisibleCheckboxes();
 });
+
+const resizeObserver = new ResizeObserver(() => {
+  calculateDimensions();
+  repositionAllCheckboxes();
+  updateVisibleCheckboxes();
+});
+resizeObserver.observe(app);
