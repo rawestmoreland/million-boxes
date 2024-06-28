@@ -8,7 +8,8 @@ import dotenv from 'dotenv'
 dotenv.config()
 
 
-// const redis = new Redis(process.env.REDIS_URL)
+const redis = new Redis(process.env.VERCEL_REDIS_URL)
+const REDIS_KEY = 'boxes'
 const port = 3000;
 const app: Express = express();
 const server = http.createServer(app)
@@ -23,30 +24,32 @@ app.get('/', (req: Request, res: Response) => {
 });
 
 app.get('/flush', async (req: Request, res: Response) => {
-  // await redis.flushall()
+  await redis.flushall()
   res.json({ message: 'Cache flushed' });
 });
 
 app.get('/load', async (req: Request, res: Response) => {
-  for (let i = 0; i < 500000; i++) {
-    // await redis.zadd(`boxes`, 0, `cb:${i}`)
+  for (let i = 0; i < 5000; i++) {
+    await redis.zadd(`boxes`, 0, `cb:${i}`)
   }
   res.send('Hello World!');
 });
 
-io.on('connection', (socket) => {
+io.on('connection', async (socket) => {
   console.log('A user connected');
 
-  socket.emit("initialState", Array.from(checkedBoxes))
+  const initialState = await getCheckboxStates(0, 999999)
+  socket.emit("initialState", initialState)
 
-  socket.on('checkboxChange', (data) => {
-    if (data.checked) {
-      checkedBoxes.add(data.index)
-    } else {
-      checkedBoxes.delete(data.index)
-    }
+  socket.on('checkboxChange', async (data) => {
+    await updateCheckboxState(data.index, data.checked)
 
     io.emit('checkboxUpdate', data)
+  })
+
+  socket.on('requestRange', async (range) => {
+    const states = await getCheckboxStates(range.start, range.end)
+    socket.emit('rangeUpdate', states)
   })
 
   socket.on('disconnect', () => {
@@ -54,8 +57,36 @@ io.on('connection', (socket) => {
   });
 });
 
+async function updateCheckboxState(index: number, checked: boolean) {
+  const score = checked ? index : -index - 1;
+  await redis.zadd(REDIS_KEY, score, index.toString());
+}
+
+async function getCheckboxStates(start: number, end: number) {
+  try {
+    const [checkedBoxes, uncheckedBoxes] = await Promise.all([
+      redis.zrangebyscore(REDIS_KEY, start, end),
+      redis.zrangebyscore(REDIS_KEY, -end - 1, -start - 1)
+    ]);
+
+    return {
+      checked: checkedBoxes.map(Number),
+      unchecked: uncheckedBoxes.map(x => -Number(x) - 1)
+    };
+  } catch (error) {
+    console.error('Error fetching checkbox states:', error);
+    throw error;
+  }
+}
+
 server.listen(port, () => {
-  return console.log(`Express is listening at http://localhost:${port}`);
+  return console.log(`Express server is running`);
 });
+
+process.on('SIGTERM', async () => {
+  console.log('SIGTERM signal received: closing HTTP server')
+  await redis.quit()
+  process.exit(0)
+})
 
 export default app

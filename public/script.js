@@ -1,5 +1,8 @@
 const socket = io();
 
+let loadingIndicator = document.createElement('div');
+loadingIndicator.textContent = 'Loading...';
+document.body.appendChild(loadingIndicator);
 const outerContainer = document.getElementById('outer-container');
 const scrollContainer = document.getElementById('scroll-container');
 const content = document.getElementById('content');
@@ -13,9 +16,10 @@ let columns, rows;
 let checkedBoxes = new Set();
 
 let stateInitialized = new Promise((resolve) => {
-  socket.on('initialState', (initialCheckedBoxes) => {
-    console.log('initialState', initialCheckedBoxes);
-    checkedBoxes = new Set(initialCheckedBoxes);
+  socket.on('initialState', (initialState) => {
+    console.log('initialState', initialState);
+    checkedBoxes = new Set(initialState.checked);
+    initialState.unchecked.forEach((index) => checkedBoxes.delete(index));
     resolve();
   });
 });
@@ -28,6 +32,18 @@ socket.on('checkboxUpdate', (data) => {
   }
   requestAnimationFrame(() => updateCheckbox(data.index));
 });
+
+socket.on('rangeUpdate', (states) => {
+  states.checked.forEach((index) => checkedBoxes.add(index));
+  states.unchecked.forEach((index) => checkedBoxes.delete(index));
+  updateCheckboxesInView();
+});
+
+function updateCheckboxesInView() {
+  visibleCheckboxes.forEach((index) => {
+    requestAnimationFrame(() => updateCheckbox(index));
+  });
+}
 
 function calculateScrollbarWidth() {
   const outer = document.createElement('div');
@@ -108,6 +124,14 @@ function updateVisibleCheckboxes() {
     Math.floor((scrollTop + viewportHeight) / checkboxSize)
   );
 
+  const startIndex = startRow * columns;
+  const endIndex = Math.min(
+    totalCheckboxes - 1,
+    endRow * columns + columns - 1
+  );
+
+  socket.emit('requestRange', { start: startIndex, end: endIndex });
+
   const visibleIndexes = new Set();
   for (let row = startRow; row <= endRow; row++) {
     for (let col = 0; col < columns; col++) {
@@ -167,7 +191,9 @@ async function init() {
   calculateScrollbarWidth();
   calculateDimensions();
   createNodePool();
-  await stateInitialized;
+  await stateInitialized.then(() =>
+    document.body.removeChild(loadingIndicator)
+  );
   updateVisibleCheckboxes();
 }
 
