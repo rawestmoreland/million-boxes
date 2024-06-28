@@ -18,7 +18,9 @@ const path_1 = __importDefault(require("path"));
 const socket_io_1 = require("socket.io");
 const ioredis_1 = require("ioredis");
 const dotenv_1 = __importDefault(require("dotenv"));
+const limiter_1 = require("limiter");
 dotenv_1.default.config();
+const limiters = new Map();
 let totalChecked = 0;
 const redis = new ioredis_1.Redis(process.env.VERCEL_REDIS_URL);
 const REDIS_KEY = 'boxes';
@@ -48,11 +50,21 @@ app.get('/load', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
 }));
 io.on('connection', (socket) => __awaiter(void 0, void 0, void 0, function* () {
     console.log('A user connected');
+    const limiter = new limiter_1.RateLimiter({ tokensPerInterval: 100, interval: 900000 });
+    limiters.set(socket.id, limiter);
     const initialState = yield getCheckboxStates(0, 999999);
     socket.emit("initialState", Object.assign(Object.assign({}, initialState), { totalChecked }));
     socket.on('checkboxChange', (data) => __awaiter(void 0, void 0, void 0, function* () {
+        console.log("box changed");
+        const limiter = limiters.get(socket.id);
         totalChecked = yield updateCheckboxState(data.index, data.checked);
-        io.emit('checkboxUpdate', Object.assign(Object.assign({}, data), { totalChecked }));
+        try {
+            yield limiter.removeTokens(1);
+            io.emit('checkboxUpdate', Object.assign(Object.assign({}, data), { totalChecked }));
+        }
+        catch (error) {
+            socket.emit('error', 'Rate limit exceeded');
+        }
     }));
     socket.on('requestRange', (range) => __awaiter(void 0, void 0, void 0, function* () {
         const states = yield getCheckboxStates(range.start, range.end);
@@ -60,6 +72,7 @@ io.on('connection', (socket) => __awaiter(void 0, void 0, void 0, function* () {
     }));
     socket.on('disconnect', () => {
         console.log('A user disconnected');
+        limiters.delete(socket.id);
     });
 }));
 function updateCheckboxState(index, checked) {

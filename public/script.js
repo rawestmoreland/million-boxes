@@ -45,6 +45,10 @@ socket.on('rangeUpdate', (states) => {
   updateCheckboxesInView();
 });
 
+socket.on('error', (error) => {
+  alert(error);
+});
+
 function updateCheckedCount(count) {
   totalChecked = count;
   countContainer.textContent = `Checked boxes: ${totalChecked}`;

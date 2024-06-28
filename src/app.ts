@@ -5,7 +5,11 @@ import path from 'path';
 import { Server } from 'socket.io'
 import { Redis } from 'ioredis'
 import dotenv from 'dotenv'
+import { RateLimiter } from 'limiter'
+
 dotenv.config()
+
+const limiters = new Map()
 
 let totalChecked = 0
 
@@ -43,13 +47,24 @@ app.get('/load', async (req: Request, res: Response) => {
 io.on('connection', async (socket) => {
   console.log('A user connected');
 
+  const limiter = new RateLimiter({ tokensPerInterval: 100, interval: 900000 })
+  limiters.set(socket.id, limiter)
+
   const initialState = await getCheckboxStates(0, 999999)
   socket.emit("initialState", { ...initialState, totalChecked })
 
   socket.on('checkboxChange', async (data) => {
+    console.log("box changed")
+    const limiter = limiters.get(socket.id)
     totalChecked = await updateCheckboxState(data.index, data.checked)
 
-    io.emit('checkboxUpdate', { ...data, totalChecked })
+    try {
+      await limiter.removeTokens(1)
+      io.emit('checkboxUpdate', { ...data, totalChecked })
+    } catch (error) {
+      socket.emit('error', 'Rate limit exceeded')
+    }
+
   })
 
   socket.on('requestRange', async (range) => {
@@ -59,6 +74,7 @@ io.on('connection', async (socket) => {
 
   socket.on('disconnect', () => {
     console.log('A user disconnected');
+    limiters.delete(socket.id)
   });
 });
 
