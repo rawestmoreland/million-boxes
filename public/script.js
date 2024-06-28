@@ -1,8 +1,6 @@
 const socket = io();
 
-let loadingIndicator = document.createElement('div');
-loadingIndicator.textContent = 'Loading...';
-document.body.appendChild(loadingIndicator);
+const loadingContainer = document.getElementById('loader');
 const outerContainer = document.getElementById('outer-container');
 const scrollContainer = document.getElementById('scroll-container');
 const content = document.getElementById('content');
@@ -16,6 +14,7 @@ let columns, rows;
 let checkedBoxes = new Set();
 
 let stateInitialized = new Promise((resolve) => {
+  outerContainer.style.display = 'none';
   socket.on('initialState', (initialState) => {
     console.log('initialState', initialState);
     checkedBoxes = new Set(initialState.checked);
@@ -191,9 +190,10 @@ async function init() {
   calculateScrollbarWidth();
   calculateDimensions();
   createNodePool();
-  await stateInitialized.then(() =>
-    document.body.removeChild(loadingIndicator)
-  );
+  await stateInitialized.then(() => {
+    outerContainer.style.display = 'block';
+    loadingContainer.style.display = 'none';
+  });
   updateVisibleCheckboxes();
 }
 

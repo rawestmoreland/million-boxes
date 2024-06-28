@@ -8,9 +8,21 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <div id="outer-container">
-      <div id="scroll-container">
-        <div id="content"></div>
+    <div id="app">
+      <header>
+        <div id="header-inner">
+          <div id="checked-count">Checked count: 100</div>
+          <h1 id="header-title">A Million Boxes</h1>
+          <div id="stats">Stats</div>
+        </div>
+      </header>
+      <div id="main-container">
+        <div id="loader">Loading...</div>
+        <div id="outer-container">
+          <div id="scroll-container">
+            <div id="content"></div>
+          </div>
+        </div>
       </div>
     </div>
     <script src="/socket.io/socket.io.js"></script>
