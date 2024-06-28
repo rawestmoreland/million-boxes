@@ -83,10 +83,4 @@ server.listen(port, () => {
   return console.log(`Express server is running`);
 });
 
-process.on('SIGTERM', async () => {
-  console.log('SIGTERM signal received: closing HTTP server')
-  await redis.quit()
-  process.exit(0)
-})
-
 export default app

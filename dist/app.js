@@ -83,10 +83,5 @@ function getCheckboxStates(start, end) {
 server.listen(port, () => {
     return console.log(`Express server is running`);
 });
-process.on('SIGTERM', () => __awaiter(void 0, void 0, void 0, function* () {
-    console.log('SIGTERM signal received: closing HTTP server');
-    yield redis.quit();
-    process.exit(0);
-}));
 exports.default = app;
 //# sourceMappingURL=app.js.map
