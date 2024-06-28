@@ -16,46 +16,39 @@ const express_1 = __importDefault(require("express"));
 const http_1 = __importDefault(require("http"));
 const path_1 = __importDefault(require("path"));
 const socket_io_1 = require("socket.io");
-const ioredis_1 = require("ioredis");
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
-const redis = new ioredis_1.Redis(process.env.REDIS_URL);
+// const redis = new Redis(process.env.REDIS_URL)
 const port = 3000;
 const app = (0, express_1.default)();
 const server = http_1.default.createServer(app);
 const io = new socket_io_1.Server(server);
-const TOTAL_CHECKBOXES = 1000000;
-const checkboxStates = Array(TOTAL_CHECKBOXES).fill(false);
+let checkedBoxes = new Set();
 app.use(express_1.default.static('public'));
 app.get('/', (req, res) => {
     res.sendFile('index.html', { root: path_1.default.join(__dirname, 'public') });
 });
 app.get('/flush', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    yield redis.flushall();
+    // await redis.flushall()
     res.json({ message: 'Cache flushed' });
 }));
 app.get('/load', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     for (let i = 0; i < 500000; i++) {
-        yield redis.zadd(`boxes`, 0, `cb:${i}`);
+        // await redis.zadd(`boxes`, 0, `cb:${i}`)
     }
     res.send('Hello World!');
 }));
 io.on('connection', (socket) => {
     console.log('A user connected');
-    socket.on('request-checkboxes', (startIndex, count) => {
-        const checkboxes = [];
-        for (let i = startIndex; i < startIndex + count; i++) {
-            if (i < TOTAL_CHECKBOXES) {
-                checkboxes.push({ id: i, checked: checkboxStates[i] });
-            }
+    socket.emit("initialState", Array.from(checkedBoxes));
+    socket.on('checkboxChange', (data) => {
+        if (data.checked) {
+            checkedBoxes.add(data.index);
         }
-        socket.emit('load-checkboxes', checkboxes);
-    });
-    socket.on('checkbox-checked', (data) => {
-        // Update the state of the checkbox
-        checkboxStates[data.id] = data.checked;
-        // Broadcast the checkbox state to all other connected clients
-        socket.broadcast.emit('update-checkbox', { boxData: data, totalChecked: checkboxStates.filter(Boolean).length });
+        else {
+            checkedBoxes.delete(data.index);
+        }
+        io.emit('checkboxUpdate', data);
     });
     socket.on('disconnect', () => {
         console.log('A user disconnected');
