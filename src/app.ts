@@ -52,7 +52,10 @@ io.on('connection', async (socket) => {
   limiters.set(socket.id, limiter)
 
   const initialState = await getCheckboxStates(0, 999999)
-  socket.emit("initialState", { ...initialState, totalChecked })
+
+  socket.on('requestInitialState', () => {
+    socket.emit('initialState', initialState)
+  })
 
   socket.on('checkboxChange', async (data) => {
     console.log("box changed")
@@ -82,6 +85,11 @@ io.on('connection', async (socket) => {
 async function updateCheckboxState(index: number, checked: boolean) {
   const score = checked ? index : -index - 1;
   await redis.zadd(REDIS_KEY, score, index.toString());
+  // Update totalChecked every 600 changes for sanity
+  if (totalChecked % 600 === 0) {
+    const checkTotal = await redis.zcount(REDIS_KEY, 0, 999999)
+    totalChecked = checkTotal
+  }
   totalChecked += checked ? 1 : -1;
   return totalChecked
 }
@@ -90,13 +98,13 @@ async function getCheckboxStates(start: number, end: number) {
   try {
     const [checkedBoxes, uncheckedBoxes] = await Promise.all([
       redis.zrangebyscore(REDIS_KEY, start, end),
-      redis.zrangebyscore(REDIS_KEY, -end - 1, -start - 1)
+      redis.zrangebyscore(REDIS_KEY, -end - 1, -start - 1),
     ]);
 
     return {
       checked: checkedBoxes.map(Number),
       unchecked: uncheckedBoxes.map(x => -Number(x) - 1),
-      totalChecked: checkedBoxes?.length || 0
+      totalChecked
     };
   } catch (error) {
     console.error('Error fetching checkbox states:', error);

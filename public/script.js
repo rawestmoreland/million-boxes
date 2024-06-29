@@ -18,11 +18,11 @@ let totalChecked = 0;
 
 let stateInitialized = new Promise((resolve) => {
   outerContainer.style.display = 'none';
+  socket.emit('requestInitialState');
   socket.on('initialState', (initialState) => {
     console.log('initialState', initialState);
     checkedBoxes = new Set(initialState.checked);
     initialState.unchecked.forEach((index) => checkedBoxes.delete(index));
-    console.log('initialState.checked', initialState.totalChecked);
     updateCheckedCount(initialState.totalChecked);
     resolve();
   });
