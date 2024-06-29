@@ -53,7 +53,10 @@ io.on('connection', async (socket) => {
 
   const initialState = await getCheckboxStates(0, 999999)
 
-  socket.on('requestInitialState', () => {
+  socket.on('requestInitialState', async () => {
+    const count = await redis.zcount(REDIS_KEY, 0, 999999)
+    totalChecked = count
+    initialState.totalChecked = count
     socket.emit('initialState', initialState)
   })
 
@@ -86,7 +89,7 @@ async function updateCheckboxState(index: number, checked: boolean) {
   const score = checked ? index : -index - 1;
   await redis.zadd(REDIS_KEY, score, index.toString());
   // Update totalChecked every 600 changes for sanity
-  if (totalChecked % 600 === 0) {
+  if (totalChecked > 0 && totalChecked % 600 === 0) {
     const checkTotal = await redis.zcount(REDIS_KEY, 0, 999999)
     totalChecked = checkTotal
   }
