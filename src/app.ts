@@ -20,7 +20,7 @@ const app: Express = express();
 const server = http.createServer(app)
 const io = new Server(server)
 
-console.log(process.env)
+console.log("ENV FILE", process.env)
 
 app.use(express.static('public'))
 
