@@ -96,7 +96,7 @@ async function getCheckboxStates(start: number, end: number) {
     return {
       checked: checkedBoxes.map(Number),
       unchecked: uncheckedBoxes.map(x => -Number(x) - 1),
-      totalChecked
+      totalChecked: checkedBoxes?.length || 0
     };
   } catch (error) {
     console.error('Error fetching checkbox states:', error);
