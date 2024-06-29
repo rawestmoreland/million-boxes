@@ -48,7 +48,9 @@ app.get('/load', async (req: Request, res: Response) => {
 io.on('connection', async (socket) => {
   console.log('A user connected');
 
-  const limiter = new RateLimiter({ tokensPerInterval: 100, interval: 900000 })
+  const limiter = new RateLimiter({
+    tokensPerInterval: 10, interval: 'second'
+  })
   limiters.set(socket.id, limiter)
 
   const initialState = await getCheckboxStates(0, 999999)
