@@ -13,7 +13,7 @@ const limiters = new Map()
 
 let totalChecked = 0
 
-const redis = new Redis(process.env.REDIS_URL || process.env.VECEL_REDIS_URL)
+const redis = new Redis(process.env.REDIS_URL || process.env.VERCEL_REDIS_URL)
 const REDIS_KEY = 'boxes'
 const port = 3000;
 const app: Express = express();
