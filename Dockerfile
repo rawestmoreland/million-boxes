@@ -30,6 +30,10 @@ RUN npm install --only=production
 # Copy built assets from the builder stage
 COPY --from=builder /usr/src/app/dist ./dist
 
+# Copy env variables
+COPY read-env.sh .
+RUN chmod +x read-env.sh
+
 # Set NODE_ENV to production
 ENV NODE_ENV production
 
@@ -37,4 +41,4 @@ ENV NODE_ENV production
 EXPOSE 3000
 
 # Start the application
-CMD ["node", "dist/app.js"]
+CMD ["/bin/bash", "-c", ". ./read-env.sh && node dist/app.js"]
