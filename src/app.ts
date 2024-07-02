@@ -33,6 +33,12 @@ app.get('/', (req: Request, res: Response) => {
   res.sendFile('index.html', { root: path.join(__dirname, 'public') });
 });
 
+app.get('/totalChecked', async (req: Request, res: Response) => {
+  const count = await redis.zcount(REDIS_KEY, 0, 999999)
+  totalChecked = count
+  res.json({ totalChecked: count });
+});
+
 app.get('/flush', async (req: Request, res: Response) => {
   await redis.flushall()
   res.json({ message: 'Cache flushed' });
